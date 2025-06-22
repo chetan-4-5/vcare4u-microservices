@@ -4,6 +4,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.function.Function;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
@@ -14,8 +15,16 @@ import jakarta.servlet.http.HttpServletRequest;
 @Component
 public class JwtUtils {
 
-    private static final long EXPIRATION_TIME = 86400000;
-    private static final String SECRET_KEY = "vcare4u1234567890vcare4u1234567890"; // 256-bit
+    // ⛔ Old hardcoded values (commented out)
+    // private static final long EXPIRATION_TIME = 86400000;
+    // private static final String SECRET_KEY = "vcare4u1234567890vcare4u1234567890";
+
+    // ✅ Injected from application.properties or environment variables
+    @Value("${app.jwt.expiration:86400000}")
+    private long expirationTime;
+
+    @Value("${app.jwt.secret}")
+    private String SECRET_KEY;
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
@@ -49,6 +58,7 @@ public class JwtUtils {
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
     }
+
     public String extractToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -56,6 +66,7 @@ public class JwtUtils {
         }
         return null;
     }
+
     public String extractUsernameFromRequest(HttpServletRequest request) {
         String token = extractToken(request);
         return token != null ? extractUsername(token) : null;
@@ -65,5 +76,4 @@ public class JwtUtils {
         String token = extractToken(request);
         return token != null ? extractRole(token) : null;
     }
-
 }

@@ -2,6 +2,7 @@ package com.vcare4u.labservice.config;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -11,20 +12,26 @@ import java.util.function.Function;
 @Component
 public class JwtUtils {
 
-    private final long expirationTime;
-    private final String secretKey;
+    // ✅ Injected from environment or application.properties
+    @Value("${app.jwt.secret}")
+    private String SECRET_KEY;
 
-    // Default constructor for Spring
-    public JwtUtils() {
-        this.secretKey = "vcare4u1234567890vcare4u1234567890";
-        this.expirationTime = 86400000; // 1 day
-    }
+    @Value("${app.jwt.expiration:86400000}")
+    private long expirationTime;
 
-    // Constructor for unit testing
-    public JwtUtils(String secretKey, long expirationTime) {
-        this.secretKey = secretKey;
-        this.expirationTime = expirationTime;
-    }
+    // ❌ Old hardcoded values (commented for reference)
+    // private final long expirationTime;
+    // private final String secretKey;
+
+    // public JwtUtils() {
+    //     this.secretKey = "vcare4u1234567890vcare4u1234567890";
+    //     this.expirationTime = 86400000; // 1 day
+    // }
+
+    // public JwtUtils(String secretKey, long expirationTime) {
+    //     this.secretKey = secretKey;
+    //     this.expirationTime = expirationTime;
+    // }
 
     public String generateToken(String username, String role) {
         return Jwts.builder()
@@ -66,7 +73,6 @@ public class JwtUtils {
     }
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secretKey.getBytes());
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 }
-

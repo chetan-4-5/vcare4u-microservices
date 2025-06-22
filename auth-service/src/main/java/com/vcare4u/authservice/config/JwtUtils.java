@@ -2,6 +2,7 @@ package com.vcare4u.authservice.config;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -11,8 +12,15 @@ import java.util.function.Function;
 @Component
 public class JwtUtils {
 
-    private static final long EXPIRATION_TIME = 86400000; // 1 day in ms
-    private static final String SECRET_KEY = "vcare4u1234567890vcare4u1234567890"; // Use at least 256-bit key
+    @Value("${app.jwt.secret}")
+    private String SECRET_KEY;
+
+    @Value("${app.jwt.expiration}")
+    private long EXPIRATION_TIME;
+
+
+//    private static final long EXPIRATION_TIME = 86400000; // 1 day in ms
+//    private static final String SECRET_KEY = "vcare4u1234567890vcare4u1234567890"; // Use at least 256-bit key
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
