@@ -3,6 +3,8 @@ package com.vcare4u.labservice.service.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.vcare4u.labservice.model.LabTest;
+import com.vcare4u.labservice.repository.LabTestRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -21,15 +23,32 @@ import lombok.RequiredArgsConstructor;
 public class LabReportServiceImpl implements LabReportService {
 
     private final LabReportRepository labReportRepository;
+    private final LabTestRepository labTestRepository;
     private final DoctorClient doctorClient;
     private final PatientClient patientClient;
 
     @Override
     public LabReportDto generateReport(LabReportDto dto) {
-        LabReport report = new LabReport();
-        BeanUtils.copyProperties(dto, report);
-        return mapToDto(labReportRepository.save(report));
+        // ✅ Fetch the LabTest entity using testId
+        LabTest labTest = labTestRepository.findById(dto.getTestId())
+                .orElseThrow(() -> new RuntimeException("Invalid Test ID"));
+
+        // ✅ Manually construct LabReport
+        LabReport report = LabReport.builder()
+                .patientId(dto.getPatientId())
+                .doctorId(dto.getDoctorId())
+                .appointmentId(dto.getAppointmentId())
+                .result(dto.getResult())
+                .reportDate(dto.getReportDate())
+                .test(labTest) // associate the actual test
+                .build();
+
+        // ✅ Save and convert back to DTO
+        LabReport saved = labReportRepository.save(report);
+        return mapToDto(saved);
     }
+
+
 
     @Override
     public List<LabReportDto> getReportsByPatient(Long patientId) {
@@ -53,6 +72,7 @@ public class LabReportServiceImpl implements LabReportService {
     private LabReportDto mapToDto(LabReport report) {
         LabReportDto dto = new LabReportDto();
         BeanUtils.copyProperties(report, dto);
+        dto.setTestId(report.getTest() != null ? report.getTest().getId() : null);
 
         try {
             dto.setDoctorName(doctorClient.getDoctorById(report.getDoctorId()).getFullName());

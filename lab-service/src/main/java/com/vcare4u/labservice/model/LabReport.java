@@ -18,8 +18,10 @@ public class LabReport {
     private Long id;
     private Long patientId;
     private Long doctorId;
-    private Long testId;
     private Long appointmentId;
     private String result;
     private LocalDateTime reportDate;
+    @ManyToOne
+    @JoinColumn(name = "test_id")
+    private LabTest test;
 }
