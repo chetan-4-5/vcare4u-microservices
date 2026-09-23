@@ -18,14 +18,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
-        System.out.println("Inside register controller");
-        System.out.println("Registering: " + request.getEmail() + ", Role: " + request.getRole());
         return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
-        System.out.println("Inside login controller");
         return ResponseEntity.ok(authService.login(request));
     }
 
@@ -34,6 +31,7 @@ public class AuthController {
         return ResponseEntity.ok("JWT is valid. You are authenticated.");
     }
     @DeleteMapping("/delete-user/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
         authService.deleteUserById(userId);
         return ResponseEntity.ok("User deleted successfully from auth DB");

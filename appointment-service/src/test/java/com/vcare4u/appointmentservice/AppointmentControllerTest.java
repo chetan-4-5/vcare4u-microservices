@@ -59,9 +59,12 @@ class AppointmentControllerTest {
 
     @Test
     void createAppointment_ShouldReturnOk() throws Exception {
-        when(service.createAppointment(any())).thenReturn(sample);
+        when(jwtUtils.extractRoleFromRequest(any())).thenReturn("PATIENT");
+        when(jwtUtils.extractUserIdFromRequest(any())).thenReturn(101L);
+        when(service.createAppointment(any(), anyString())).thenReturn(sample);
 
         mockMvc.perform(post("/api/appointments")
+                .header("Authorization", "Bearer token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(sample)))
                 .andExpect(status().isOk())
@@ -71,6 +74,8 @@ class AppointmentControllerTest {
     @Test
     void getAppointmentById_ShouldReturnAppointment() throws Exception {
         when(service.getAppointmentById(eq(1L), anyString())).thenReturn(sample);
+        when(jwtUtils.extractRoleFromRequest(any())).thenReturn("PATIENT");
+        when(jwtUtils.extractUserIdFromRequest(any())).thenReturn(101L);
 
         mockMvc.perform(get("/api/appointments/1")
                 .header("Authorization", "Bearer token"))
@@ -80,9 +85,10 @@ class AppointmentControllerTest {
 
     @Test
     void getAllAppointments_ShouldReturnList() throws Exception {
-        when(service.getAllAppointments()).thenReturn(List.of(sample));
+        when(service.getAllAppointments(anyString())).thenReturn(List.of(sample));
 
-        mockMvc.perform(get("/api/appointments"))
+        mockMvc.perform(get("/api/appointments")
+                .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].doctorId").value(201));
     }

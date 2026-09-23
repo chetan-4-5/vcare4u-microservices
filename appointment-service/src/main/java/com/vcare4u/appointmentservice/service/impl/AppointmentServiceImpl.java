@@ -3,11 +3,12 @@ package com.vcare4u.appointmentservice.service.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.vcare4u.appointmentservice.dto.LabPaymentResponse;
+import com.vcare4u.appointmentservice.feign.LabPaymentClient;
 import com.vcare4u.appointmentservice.model.AppointmentSlot;
 import com.vcare4u.appointmentservice.repository.AppointmentSlotRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import com.vcare4u.appointmentservice.dto.AppointmentDto;
 import com.vcare4u.appointmentservice.dto.DoctorDto;
@@ -19,6 +20,7 @@ import com.vcare4u.appointmentservice.model.Appointment;
 import com.vcare4u.appointmentservice.repository.AppointmentRepository;
 import com.vcare4u.appointmentservice.service.AppointmentService;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -29,46 +31,45 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentSlotRepository slotRepository;
     private final DoctorClient doctorClient;
     private final PatientClient patientClient;
-    private final RestTemplate restTemplate;
-
-    private final String LAB_URL = "http://localhost:8080/lab-service/api/lab/payment/appointment/";
+    private final LabPaymentClient labPaymentClient;
 
     @Override
-    public List<AppointmentDto> getAppointmentsByPatient(Long patientId) {
+    public List<AppointmentDto> getAppointmentsByPatient(Long patientId, String token) {
         return appointmentRepository.findByPatientId(patientId).stream()
-                .map(this::mapToDtoWithLabStatus)
+                .map(appointment -> mapToDtoWithLabStatus(appointment, token))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<AppointmentDto> getAppointmentsByDoctor(Long doctorId) {
+    public List<AppointmentDto> getAppointmentsByDoctor(Long doctorId, String token) {
         return appointmentRepository.findByDoctorId(doctorId).stream()
-                .map(this::mapToDtoWithLabStatus)
+                .map(appointment -> mapToDtoWithLabStatus(appointment, token))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public AppointmentDto updateAppointmentStatus(Long id, String status) {
+    public AppointmentDto updateAppointmentStatus(Long id, String status, String token) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", "id", id));
         appointment.setStatus(status);
-        return mapToDtoWithLabStatus(appointmentRepository.save(appointment));
+        return mapToDtoWithLabStatus(appointmentRepository.save(appointment), token);
     }
 
     @Override
-    public AppointmentDto createAppointment(AppointmentDto dto) {
+    @Transactional
+    public AppointmentDto createAppointment(AppointmentDto dto, String token) {
+        AppointmentSlot slot = slotRepository.findByDoctorIdAndStartTimeAndIsBookedFalse(
+                dto.getDoctorId(), dto.getAppointmentDateTime()
+        ).orElseThrow(() -> new RuntimeException("Matching available slot not found"));
+
         Appointment appointment = new Appointment();
         BeanUtils.copyProperties(dto, appointment);
         Appointment savedAppointment = appointmentRepository.save(appointment);
 
-        AppointmentSlot slot = slotRepository.findByDoctorIdAndStartTime(
-                dto.getDoctorId(), dto.getAppointmentDateTime()
-        ).orElseThrow(() -> new RuntimeException("Matching slot not found"));
-
         slot.setBooked(true);
         slotRepository.save(slot);
 
-        return mapToDtoWithLabStatus(savedAppointment);
+        return mapToDtoWithLabStatus(savedAppointment, token);
     }
 
     @Override
@@ -76,7 +77,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", "id", id));
 
-        AppointmentDto dto = mapToDtoWithLabStatus(appointment);
+        AppointmentDto dto = mapToDtoWithLabStatus(appointment, token);
 
         try {
             DoctorDto doctor = doctorClient.getDoctorById(dto.getDoctorId(), token);
@@ -90,14 +91,14 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
-    public List<AppointmentDto> getAllAppointments() {
+    public List<AppointmentDto> getAllAppointments(String token) {
         return appointmentRepository.findAll().stream()
-                .map(this::mapToDtoWithLabStatus)
+                .map(appointment -> mapToDtoWithLabStatus(appointment, token))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public AppointmentDto updateAppointment(Long id, AppointmentDto dto) {
+    public AppointmentDto updateAppointment(Long id, AppointmentDto dto, String token) {
         Appointment existing = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", "id", id));
 
@@ -108,7 +109,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         existing.setStatus(dto.getStatus());
         existing.setNotes(dto.getNotes());
 
-        return mapToDtoWithLabStatus(appointmentRepository.save(existing));
+        return mapToDtoWithLabStatus(appointmentRepository.save(existing), token);
     }
 
     @Override
@@ -124,32 +125,16 @@ public class AppointmentServiceImpl implements AppointmentService {
         return dto;
     }
 
-    private AppointmentDto mapToDtoWithLabStatus(Appointment appointment) {
+    private AppointmentDto mapToDtoWithLabStatus(Appointment appointment, String token) {
         AppointmentDto dto = mapToDto(appointment);
 
         try {
-            var response = restTemplate.getForObject(
-                    LAB_URL + appointment.getId(),
-                    LabPaymentResponse.class
-            );
+            LabPaymentResponse response = labPaymentClient.getByAppointment(appointment.getId(), token);
             dto.setLabPaymentStatus(response != null ? response.getStatus() : "NONE");
         } catch (Exception e) {
             dto.setLabPaymentStatus("NONE");
         }
 
         return dto;
-    }
-
-    // Inner DTO for lab-service response
-    private static class LabPaymentResponse {
-        private String status;
-
-        public String getStatus() {
-            return status;
-        }
-
-        public void setStatus(String status) {
-            this.status = status;
-        }
     }
 }

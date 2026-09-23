@@ -38,6 +38,10 @@ public class JwtUtils {
         return extractAllClaims(token).get("role", String.class);
     }
 
+    public Long extractUserId(String token) {
+        return extractAllClaims(token).get("id", Long.class);
+    }
+
     public boolean isTokenValid(String token, String username) {
         return (extractUsername(token).equals(username) && !isTokenExpired(token));
     }
@@ -75,5 +79,10 @@ public class JwtUtils {
     public String extractRoleFromRequest(HttpServletRequest request) {
         String token = extractToken(request);
         return token != null ? extractRole(token) : null;
+    }
+
+    public Long extractUserIdFromRequest(HttpServletRequest request) {
+        String token = extractToken(request);
+        return token != null ? extractUserId(token) : null;
     }
 }

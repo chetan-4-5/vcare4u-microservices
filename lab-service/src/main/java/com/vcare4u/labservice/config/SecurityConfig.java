@@ -39,8 +39,9 @@ public class SecurityConfig {
                         // ✅ Lab Payment Requests
                         .requestMatchers(HttpMethod.POST, "/api/lab/payment/request").hasRole("DOCTOR")
                         .requestMatchers(HttpMethod.PUT, "/api/lab/payment/mark-paid/**").hasRole("PATIENT")
-                        .requestMatchers(HttpMethod.GET, "/api/lab/payment/patient/**").hasRole("PATIENT")
-                        .requestMatchers(HttpMethod.GET, "/api/lab/payment/appointment/**").hasAnyRole("DOCTOR", "PATIENT")
+                        .requestMatchers(HttpMethod.GET, "/api/lab/payment/patient/**").hasAnyRole("ADMIN", "PATIENT")
+                        .requestMatchers(HttpMethod.GET, "/api/lab/payment/appointment/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT")
+                        .requestMatchers(HttpMethod.GET, "/api/lab/payment/doctor/**").hasAnyRole("ADMIN", "DOCTOR")
 
                         .anyRequest().authenticated()
                 )

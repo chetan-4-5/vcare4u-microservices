@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class LoggingAspect {
 
-    @Pointcut("execution(* com.vcare4u.doctorservice.controller..*(..)) || execution(* com.vcare4u.doctorservice.service..*(..)) || execution(* com.vcare4u.doctorservice.testdummy..*(..))")
+    @Pointcut("execution(* com.vcare4u.doctorservice.controller..*(..)) || execution(* com.vcare4u.doctorservice.service..*(..))")
     public void applicationPackagePointcut() {}
 
     @Before("applicationPackagePointcut()")

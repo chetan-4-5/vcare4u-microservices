@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Component
 public class JwtUtils {
 
@@ -34,6 +36,11 @@ public class JwtUtils {
                 .parseClaimsJws(token).getBody().get("role", String.class);
     }
 
+    public Long extractUserId(String token) {
+        return Jwts.parserBuilder().setSigningKey(getKey()).build()
+                .parseClaimsJws(token).getBody().get("id", Long.class);
+    }
+
     public boolean isTokenValid(String token) {
         try {
             Jws<Claims> claims = Jwts.parserBuilder().setSigningKey(getKey()).build().parseClaimsJws(token);
@@ -41,5 +48,23 @@ public class JwtUtils {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
+    }
+
+    public String extractRoleFromRequest(HttpServletRequest request) {
+        String token = extractToken(request);
+        return token != null ? extractRole(token) : null;
+    }
+
+    public Long extractUserIdFromRequest(HttpServletRequest request) {
+        String token = extractToken(request);
+        return token != null ? extractUserId(token) : null;
     }
 }

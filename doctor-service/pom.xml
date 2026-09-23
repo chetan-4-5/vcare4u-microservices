@@ -109,11 +109,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-        	<groupId>com.vcare4u.authservice</groupId>
-        	<artifactId>auth-service</artifactId>
-        	<version>0.0.1-SNAPSHOT</version>
-        </dependency>
         <!-- In your pom.xml -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

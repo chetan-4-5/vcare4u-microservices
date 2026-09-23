@@ -22,8 +22,8 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
 
                         // ADMIN only endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/patients").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/patients/**").permitAll() //.hasAnyRole("ADMIN", "PATIENT")
+                        .requestMatchers(HttpMethod.POST, "/api/patients").hasAnyRole("ADMIN", "PATIENT")
+                        .requestMatchers(HttpMethod.PUT, "/api/patients/**").hasAnyRole("ADMIN", "PATIENT")
                         .requestMatchers(HttpMethod.DELETE, "/api/patients/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/patients").hasRole("ADMIN") // ✅ Only ADMIN can get all patients
 

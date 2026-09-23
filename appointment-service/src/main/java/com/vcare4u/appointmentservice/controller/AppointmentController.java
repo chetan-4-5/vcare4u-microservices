@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.vcare4u.appointmentservice.dto.AppointmentDto;
+import com.vcare4u.appointmentservice.config.JwtUtils;
 import com.vcare4u.appointmentservice.service.AppointmentService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,55 +28,81 @@ import lombok.RequiredArgsConstructor;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final JwtUtils jwtUtils;
 
     @PostMapping
-    public ResponseEntity<?> createAppointment(@RequestBody AppointmentDto dto) {
+    public ResponseEntity<?> createAppointment(@RequestBody AppointmentDto dto, HttpServletRequest request) {
 
         if (dto.getAppointmentDateTime() == null || dto.getAppointmentDateTime().isBefore(LocalDateTime.now())) {
             return ResponseEntity.badRequest().body("Cannot book an appointment in the past.");
         }
 
-        AppointmentDto savedAppointment = appointmentService.createAppointment(dto);
+        String role = jwtUtils.extractRoleFromRequest(request);
+        Long authUserId = jwtUtils.extractUserIdFromRequest(request);
+        if ("PATIENT".equals(role)) {
+            dto.setPatientId(authUserId);
+        } else if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        AppointmentDto savedAppointment = appointmentService.createAppointment(dto, request.getHeader("Authorization"));
         return ResponseEntity.ok(savedAppointment);
     }
 
 
     @GetMapping("/{id}")
     public ResponseEntity<AppointmentDto> getAppointmentById(@PathVariable Long id, HttpServletRequest request) {
-        String token = request.getHeader("Authorization");
-        return ResponseEntity.ok(appointmentService.getAppointmentById(id, token));
+        AppointmentDto dto = appointmentService.getAppointmentById(id, request.getHeader("Authorization"));
+        if (!canAccessAppointment(dto, request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(dto);
     }
 
 
     // ADMIN only
     @GetMapping
-    public ResponseEntity<List<AppointmentDto>> getAllAppointments() {
-        return ResponseEntity.ok(appointmentService.getAllAppointments());
+    public ResponseEntity<List<AppointmentDto>> getAllAppointments(HttpServletRequest request) {
+        return ResponseEntity.ok(appointmentService.getAllAppointments(request.getHeader("Authorization")));
     }
 
     // PATIENT
     @GetMapping("/my")
-    public ResponseEntity<List<AppointmentDto>> getPatientAppointments(@RequestParam Long patientId) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByPatient(patientId));
+    public ResponseEntity<List<AppointmentDto>> getPatientAppointments(@RequestParam Long patientId, HttpServletRequest request) {
+        String role = jwtUtils.extractRoleFromRequest(request);
+        Long authUserId = jwtUtils.extractUserIdFromRequest(request);
+        if ("PATIENT".equals(role) && !patientId.equals(authUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(appointmentService.getAppointmentsByPatient(patientId, request.getHeader("Authorization")));
     }
 
     // DOCTOR
     @GetMapping("/doctor/{doctorId}")
-    public ResponseEntity<List<AppointmentDto>> getDoctorAppointments(@PathVariable Long doctorId) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
+    public ResponseEntity<List<AppointmentDto>> getDoctorAppointments(@PathVariable Long doctorId, HttpServletRequest request) {
+        String role = jwtUtils.extractRoleFromRequest(request);
+        Long authUserId = jwtUtils.extractUserIdFromRequest(request);
+        if ("DOCTOR".equals(role) && !doctorId.equals(authUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId, request.getHeader("Authorization")));
     }
 
     // DOCTOR
     @PutMapping("/{id}/status")
-    public ResponseEntity<AppointmentDto> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        System.out.println("In Update Status Appointments");
-        return ResponseEntity.ok(appointmentService.updateAppointmentStatus(id, body.get("status")));
+    public ResponseEntity<AppointmentDto> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body, HttpServletRequest request) {
+        AppointmentDto appointment = appointmentService.getAppointmentById(id, request.getHeader("Authorization"));
+        Long authUserId = jwtUtils.extractUserIdFromRequest(request);
+        if (!appointment.getDoctorId().equals(authUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(appointmentService.updateAppointmentStatus(id, body.get("status"), request.getHeader("Authorization")));
     }
 
     // ADMIN
     @PutMapping("/{id}")
-    public ResponseEntity<AppointmentDto> updateAppointment(@PathVariable Long id, @RequestBody AppointmentDto dto) {
-        return ResponseEntity.ok(appointmentService.updateAppointment(id, dto));
+    public ResponseEntity<AppointmentDto> updateAppointment(@PathVariable Long id, @RequestBody AppointmentDto dto, HttpServletRequest request) {
+        return ResponseEntity.ok(appointmentService.updateAppointment(id, dto, request.getHeader("Authorization")));
     }
 
     // ADMIN
@@ -82,5 +110,13 @@ public class AppointmentController {
     public ResponseEntity<Void> deleteAppointment(@PathVariable Long id) {
         appointmentService.deleteAppointment(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean canAccessAppointment(AppointmentDto dto, HttpServletRequest request) {
+        String role = jwtUtils.extractRoleFromRequest(request);
+        Long authUserId = jwtUtils.extractUserIdFromRequest(request);
+        return "ADMIN".equals(role)
+                || ("PATIENT".equals(role) && dto.getPatientId().equals(authUserId))
+                || ("DOCTOR".equals(role) && dto.getDoctorId().equals(authUserId));
     }
 }

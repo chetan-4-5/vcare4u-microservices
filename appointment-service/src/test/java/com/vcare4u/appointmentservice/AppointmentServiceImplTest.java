@@ -5,18 +5,16 @@ import com.vcare4u.appointmentservice.dto.DoctorDto;
 import com.vcare4u.appointmentservice.dto.PatientDto;
 import com.vcare4u.appointmentservice.exception.ResourceNotFoundException;
 import com.vcare4u.appointmentservice.feign.DoctorClient;
+import com.vcare4u.appointmentservice.feign.LabPaymentClient;
 import com.vcare4u.appointmentservice.feign.PatientClient;
 import com.vcare4u.appointmentservice.model.Appointment;
 import com.vcare4u.appointmentservice.model.AppointmentSlot;
 import com.vcare4u.appointmentservice.repository.AppointmentRepository;
 import com.vcare4u.appointmentservice.repository.AppointmentSlotRepository;
-import com.vcare4u.appointmentservice.service.AppointmentSlotService;
 import com.vcare4u.appointmentservice.service.impl.AppointmentServiceImpl;
 
-import com.vcare4u.appointmentservice.service.impl.AppointmentSlotServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,9 +27,9 @@ class AppointmentServiceImplTest {
     private AppointmentRepository appointmentRepository;
     private DoctorClient doctorClient;
     private PatientClient patientClient;
+    private LabPaymentClient labPaymentClient;
     private AppointmentServiceImpl service;
     private AppointmentSlotRepository slotRepository;
-    private RestTemplate restTemplate;
 
 
     @BeforeEach
@@ -40,7 +38,8 @@ class AppointmentServiceImplTest {
         slotRepository = mock(AppointmentSlotRepository.class);
         doctorClient = mock(DoctorClient.class);
         patientClient = mock(PatientClient.class);
-        service = new AppointmentServiceImpl(appointmentRepository, slotRepository, doctorClient, patientClient, restTemplate);
+        labPaymentClient = mock(LabPaymentClient.class);
+        service = new AppointmentServiceImpl(appointmentRepository, slotRepository, doctorClient, patientClient, labPaymentClient);
 
     }
 
@@ -89,7 +88,7 @@ class AppointmentServiceImplTest {
 
         // Mock dependencies
         when(appointmentRepository.save(any())).thenReturn(appointment);
-        when(slotRepository.findByDoctorIdAndStartTime(dto.getDoctorId(), dto.getAppointmentDateTime()))
+        when(slotRepository.findByDoctorIdAndStartTimeAndIsBookedFalse(dto.getDoctorId(), dto.getAppointmentDateTime()))
                 .thenReturn(Optional.of(slot));
 
         AppointmentDto result = service.createAppointment(dto);

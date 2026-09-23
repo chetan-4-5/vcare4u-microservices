@@ -48,9 +48,11 @@ class PatientControllerTest {
 
     @Test
     void testCreatePatient() {
+        when(jwtUtils.extractRoleFromRequest(request)).thenReturn("PATIENT");
+        when(jwtUtils.extractUserIdFromRequest(request)).thenReturn(1L);
         when(patientService.createPatient(sampleDto)).thenReturn(sampleDto);
 
-        ResponseEntity<PatientDto> response = patientController.createPatient(sampleDto);
+        ResponseEntity<PatientDto> response = patientController.createPatient(sampleDto, request);
 
         assertEquals(200, response.getStatusCodeValue());
         assertEquals("John Doe", response.getBody().getFullName());
@@ -113,6 +115,7 @@ class PatientControllerTest {
     @Test
     void testUpdatePatient_PatientRoleAllowed() {
         when(jwtUtils.extractRoleFromRequest(request)).thenReturn("PATIENT");
+        when(jwtUtils.extractUserIdFromRequest(request)).thenReturn(1L);
         when(patientService.updatePatient(1L, sampleDto)).thenReturn(sampleDto);
 
         ResponseEntity<PatientDto> response = patientController.updatePatient(1L, sampleDto, request);
@@ -125,12 +128,13 @@ class PatientControllerTest {
     @Test
     void testDeletePatient() {
         doNothing().when(patientService).deletePatient(1L);
-        doNothing().when(authServiceClient).deleteUser(1L);
+        when(request.getHeader("Authorization")).thenReturn("Bearer token");
+        doNothing().when(authServiceClient).deleteUser(1L, "Bearer token");
 
-        ResponseEntity<Void> response = patientController.deletePatient(1L);
+        ResponseEntity<Void> response = patientController.deletePatient(1L, request);
 
         assertEquals(204, response.getStatusCodeValue());
         verify(patientService, times(1)).deletePatient(1L);
-        verify(authServiceClient, times(1)).deleteUser(1L);
+        verify(authServiceClient, times(1)).deleteUser(1L, "Bearer token");
     }
 }

@@ -1,0 +1,25 @@
+# Build output
+target/
+*/target/
+
+# IDE metadata
+.idea/
+.settings/
+.classpath
+.project
+*.iml
+*.eml
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Logs and local runtime files
+*.log
+*.tmp
+*.pid
+
+# Environment overrides
+.env
+.env.*
+!.env.example

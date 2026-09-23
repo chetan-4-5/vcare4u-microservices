@@ -2,6 +2,7 @@ package com.vcare4u.doctorservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vcare4u.doctorservice.config.JwtAuthFilter;
+import com.vcare4u.doctorservice.config.JwtUtils;
 import com.vcare4u.doctorservice.controller.DoctorController;
 import com.vcare4u.doctorservice.dto.DoctorDto;
 import com.vcare4u.doctorservice.feign.AuthServiceClient;
@@ -33,6 +34,9 @@ class DoctorControllerTest {
 
     @MockBean
     private JwtAuthFilter jwtAuthFilter;
+
+    @MockBean
+    private JwtUtils jwtUtils;
 
     @MockBean
     private DoctorService doctorService;
@@ -96,6 +100,8 @@ class DoctorControllerTest {
                 1L, "Dr. Updated", "updated@doc.com", "ENT", "1234567890", "MBBS", "ENT");
 
         Mockito.when(doctorService.updateDoctor(Mockito.eq(1L), any())).thenReturn(updatedDto);
+        Mockito.when(jwtUtils.extractRoleFromRequest(any())).thenReturn("DOCTOR");
+        Mockito.when(jwtUtils.extractUserIdFromRequest(any())).thenReturn(1L);
 
         mockMvc.perform(put("/api/doctors/1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -108,8 +114,9 @@ class DoctorControllerTest {
     @Test
     void testDeleteDoctor() throws Exception {
         doNothing().when(doctorService).deleteDoctor(1L);
-        doNothing().when(authServiceClient).deleteUser(1L);
-        mockMvc.perform(delete("/api/doctors/1"))
+        doNothing().when(authServiceClient).deleteUser(1L, "Bearer token");
+        mockMvc.perform(delete("/api/doctors/1")
+                .header("Authorization", "Bearer token"))
                 .andExpect(status().isNoContent());
     }
 }
